@@ -10,14 +10,27 @@ uploaded_file = st.file_uploader("Sube el archivo .txt exportado desde WhatsApp"
 
 def categorizar(mensaje):
     mensaje = mensaje.lower()
+
     if 'anular' in mensaje and 'factura' in mensaje:
-        return 'Solicitud de anulación'
-    elif 'factura' in mensaje:
-        return 'Solicitud relacionada con factura'
-    elif 'soporte' in mensaje:
-        return 'Soporte técnico'
+        return 'Anular Factura'
+    elif 'crear' in mensaje and 'factura' in mensaje:
+        return 'Crear Factura'
+    elif 'anular' in mensaje:
+        return 'Anulación'
+    elif 'cambio' in mensaje and 'examen' in mensaje:
+        return 'Cambio de exámenes'
+    elif 'descuento' in mensaje:
+        return 'Descuentos'
+    elif 'eliminar' in mensaje or 'eliminación' in mensaje:
+        return 'Eliminación'
+    elif 'monto' in mensaje or 'importe' in mensaje:
+        return 'Montos'
+    elif 'error' in mensaje or 'fallo' in mensaje:
+        return 'Errores'
+    elif 'matricula' in mensaje or 'matrícula' in mensaje:
+        return 'Matrícula'
     else:
-        return 'Otro'
+        return 'Otros'
 
 if uploaded_file:
     stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))

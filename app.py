@@ -47,7 +47,7 @@ if uploaded_file:
     stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
     text = stringio.read()
 
-    pattern = r'(\d{2}/\d{2}/\d{4}), (\d{2}:\d{2}) - ([^:]+): (.+)'
+    pattern = r'(\d{1,2}/\d{1,2}/\d{4}), (\d{2}:\d{2}) - ([^:]+): (.+)'
     matches = re.findall(pattern, text)
 
     records = []

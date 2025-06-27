@@ -107,9 +107,23 @@ if uploaded_file:
     if fecha_especifica:
         df = df[df['Fecha'].dt.date == fecha_especifica]
 
+    # Filtros básicos
     usuario = st.selectbox("Filtrar por usuario", ["Todos"] + df['Usuario'].unique().tolist())
-    categoria = st.selectbox("Filtrar por categoría", ["Todos"] + df['Categoría'].unique().tolist())
     palabra = st.text_input("Buscar palabra clave")
+
+    # Crear DataFrame filtrado (antes de usarlo)
+    filtrado = df.copy()
+    if usuario != "Todos":
+        filtrado = filtrado[filtrado['Usuario'] == usuario]
+    if palabra:
+        filtrado = filtrado[filtrado['Mensaje'].str.contains(palabra, case=False)]
+
+    # AHORA SÍ: obtener categorías desde el DataFrame ya filtrado
+    categorias_disponibles = sorted(filtrado['Categoría'].unique().tolist())
+    if not categorias_disponibles:
+        st.warning("⚠️ No hay categorías disponibles en los mensajes filtrados.")
+
+    categoria = st.selectbox("Filtrar por categoría", ["Todos"] + categorias_disponibles)
 
     filtrado = df.copy()
     if usuario != "Todos":

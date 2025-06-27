@@ -29,6 +29,8 @@ def categorizar(mensaje):
         return 'Errores'
     elif 'matricula' in mensaje or 'matrícula' in mensaje:
         return 'Matrícula'
+    elif 'dinero' in mensaje or 'dinero' in mensaje:
+        return 'Dinero caja'
     else:
         return 'Otros'
 

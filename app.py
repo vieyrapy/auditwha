@@ -15,13 +15,15 @@ raw_rules = st.sidebar.text_area(
     """
 Anular Factura: anular factura
 Crear Factura: crear factura
-Anulación: anular
-Cambio de exámenes: cambio examen
+Anulación: anular, anuló
+Cambio de exámenes: cambio examen, examenes
 Descuentos: descuento
 Eliminación: eliminar, eliminación
 Montos: monto, importe
 Errores: error, fallo
 Matrícula: matricula, matrícula
+Resuelto Soporte: listo, Ya
+Imagen: <Multimedia omitido>
 Otros:
 """.strip()
 )
@@ -44,11 +46,22 @@ def categorizar_dinamico(mensaje):
     return "Otros"
 
 if uploaded_file:
-    stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-    text = stringio.read()
+    # Leer contenido del archivo con soporte para UTF-8 y UTF-16
+    raw_bytes = uploaded_file.getvalue()
+    try:
+        text = raw_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw_bytes.decode("utf-16")
 
-    pattern = r'(\d{1,2}/\d{1,2}/\d{4}), (\d{2}:\d{2}) - ([^:]+): (.+)'
-    matches = re.findall(pattern, text)
+    # Patrones flexibles para distintas versiones de exportación
+    pattern1 = r'(\d{1,2}/\d{1,2}/\d{4}), (\d{2}:\d{2}) - ([^:]+): (.+)'
+    pattern2 = r'\[(\d{1,2}/\d{1,2}/\d{4}) (\d{2}:\d{2})\] ([^:]+): (.+)'
+
+    matches1 = re.findall(pattern1, text)
+    matches2 = re.findall(pattern2, text)
+    matches = matches1 + matches2
+
+    st.write(f"📌 Mensajes detectados: {len(matches)}")
 
     records = []
     for fecha, hora, usuario, mensaje in matches:
@@ -62,6 +75,7 @@ if uploaded_file:
         })
 
     df = pd.DataFrame(records)
+    df['Fecha'] = pd.to_datetime(df['Fecha'], format="%d/%m/%Y", errors='coerce')
 
     st.subheader("📊 Resumen General")
     st.dataframe(df)
@@ -77,6 +91,22 @@ if uploaded_file:
     st.dataframe(resumen_usr)
 
     st.subheader("📑 Filtrar mensajes")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        año = st.selectbox("Filtrar por año", ["Todos"] + sorted(df['Fecha'].dt.year.dropna().unique().astype(str).tolist()))
+    with col2:
+        mes = st.selectbox("Filtrar por mes", ["Todos"] + sorted(df['Fecha'].dt.strftime('%B').dropna().unique().tolist()))
+    with col3:
+        fecha_especifica = st.date_input("Filtrar por fecha específica", value=None)
+
+    if año != "Todos":
+        df = df[df['Fecha'].dt.year.astype(str) == año]
+    if mes != "Todos":
+        df = df[df['Fecha'].dt.strftime('%B') == mes]
+    if fecha_especifica:
+        df = df[df['Fecha'].dt.date == fecha_especifica]
+
     usuario = st.selectbox("Filtrar por usuario", ["Todos"] + df['Usuario'].unique().tolist())
     categoria = st.selectbox("Filtrar por categoría", ["Todos"] + df['Categoría'].unique().tolist())
     palabra = st.text_input("Buscar palabra clave")
@@ -89,6 +119,7 @@ if uploaded_file:
     if palabra:
         filtrado = filtrado[filtrado['Mensaje'].str.contains(palabra, case=False)]
 
+    st.markdown(f"### ✉️ Mensajes filtrados: {len(filtrado)}")
     st.dataframe(filtrado)
 
     csv = filtrado.to_csv(index=False).encode('utf-8')

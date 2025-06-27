@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import re
@@ -8,31 +9,39 @@ st.title("📋 Auditoría de Grupo de WhatsApp")
 
 uploaded_file = st.file_uploader("Sube el archivo .txt exportado desde WhatsApp", type=["txt"])
 
-def categorizar(mensaje):
-    mensaje = mensaje.lower()
+st.sidebar.header("⚙️ Categorías personalizadas")
+raw_rules = st.sidebar.text_area(
+    "Definí tus categorías (una por línea, formato: Nombre: palabra1, palabra2)",
+    """
+Anular Factura: anular factura
+Crear Factura: crear factura
+Anulación: anular
+Cambio de exámenes: cambio examen
+Descuentos: descuento
+Eliminación: eliminar, eliminación
+Montos: monto, importe
+Errores: error, fallo
+Matrícula: matricula, matrícula
+Otros:
+""".strip()
+)
 
-    if 'anular' in mensaje and 'factura' in mensaje:
-        return 'Anular Factura'
-    elif 'crear' in mensaje and 'factura' in mensaje:
-        return 'Crear Factura'
-    elif 'anular' in mensaje:
-        return 'Anulación'
-    elif 'cambio' in mensaje and 'examen' in mensaje:
-        return 'Cambio de exámenes'
-    elif 'descuento' in mensaje:
-        return 'Descuentos'
-    elif 'eliminar' in mensaje or 'eliminación' in mensaje:
-        return 'Eliminación'
-    elif 'monto' in mensaje or 'importe' in mensaje:
-        return 'Montos'
-    elif 'error' in mensaje or 'fallo' in mensaje:
-        return 'Errores'
-    elif 'matricula' in mensaje or 'matrícula' in mensaje:
-        return 'Matrícula'
-    elif 'dinero' in mensaje or 'dinero' in mensaje:
-        return 'Dinero caja'
-    else:
-        return 'Otros'
+def parse_rules(text):
+    rules = {}
+    for line in text.strip().split("\n"):
+        if ":" in line:
+            cat, palabras = line.split(":", 1)
+            rules[cat.strip()] = [p.strip().lower() for p in palabras.split(",") if p.strip()]
+    return rules
+
+rules_dict = parse_rules(raw_rules)
+
+def categorizar_dinamico(mensaje):
+    mensaje = mensaje.lower()
+    for categoria, palabras in rules_dict.items():
+        if any(palabra in mensaje for palabra in palabras):
+            return categoria
+    return "Otros"
 
 if uploaded_file:
     stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
@@ -43,7 +52,7 @@ if uploaded_file:
 
     records = []
     for fecha, hora, usuario, mensaje in matches:
-        categoria = categorizar(mensaje)
+        categoria = categorizar_dinamico(mensaje)
         records.append({
             'Fecha': fecha,
             'Hora': hora,

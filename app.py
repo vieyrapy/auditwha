@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import re
@@ -13,17 +12,20 @@ st.sidebar.header("⚙️ Categorías personalizadas")
 raw_rules = st.sidebar.text_area(
     "Definí tus categorías (una por línea, formato: Nombre: palabra1, palabra2)",
     """
-Anular Factura: anular factura
-Crear Factura: crear factura
-Anulación: anular, anuló
-Cambio de exámenes: cambio examen, examenes
-Descuentos: descuento
-Eliminación: eliminar, eliminación
-Montos: monto, importe
-Errores: error, fallo
-Matrícula: matricula, matrícula
-Resuelto Soporte: listo, Ya
+Anular Factura: anular factura, eliminar factura, anular pago, eliminar pago, cancelación pago, anulo pago, sacar pago
+Crear Factura o Procesar Pago: crear factura, procesar pago, abonar, abono
+Anulación Inscripción: anular inscripción, eliminar inscripción 
+Cambio Examen: cambio examen, cambiar examen, cambiar monto examen, modificar monto examen, cambio de oportunidad, tercera oportunidad, segunda oportunidad, primera oportunidad, extraordinario, recuperatorio
+Descuentos: descuento, beca, becado, 10% descuento, 50% descuento, egresada
+Importe en Caja: monto, importe, gs (Guaraníes), dólares, total, diferencia, costo, precio 
+Matrícula  e Inscripción: matricula, matrícula, matricular, inscripción, inscripto, preinscribió, inscribir
+Resueltos Soporte: listo, Ya, ok
 Imagen: <Multimedia omitido>
+Consultas Académicas: Materias, módulos, curso, semestre, carrera, malla, didáctica, sociología, psicología, contabilidad, inglés, comunicación, física, historia, economía, derecho, emprendedurismo, anatomía, microbiología, auditoría, gerencia, comercio internacional, fisiología, etc.
+Asistencia y Listas: lista, lista de asistencia, habilitados, no aparece en lista, verificar lista 
+Gestión de Datos: cambiar nombre, cambiar apellido, cambiar datos, agregar correo electrónico, agregar RUC 
+Informes y Reportes: reporte, ficha, informe académico, planilla
+Gestión de Usuarios: crear usuario, resetear contraseña, habilitar acceso
 Otros:
 """.strip()
 )
@@ -45,26 +47,39 @@ def categorizar_dinamico(mensaje):
             return categoria
     return "Otros"
 
+def merge_multiline_whatsapp_messages(text):
+    lines = text.strip().split("\n")
+    merged_lines = []
+    current = ""
+    whatsapp_pattern = re.compile(r"^\d{1,2}/\d{1,2}/\d{4}, \d{2}:\d{2} - ")
+
+    for line in lines:
+        if whatsapp_pattern.match(line):
+            if current:
+                merged_lines.append(current.strip())
+            current = line
+        else:
+            current += " " + line.strip()
+    if current:
+        merged_lines.append(current.strip())
+    return merged_lines
+
 if uploaded_file:
-    # Leer contenido del archivo con soporte para UTF-8 y UTF-16
     raw_bytes = uploaded_file.getvalue()
     try:
         text = raw_bytes.decode("utf-8")
     except UnicodeDecodeError:
         text = raw_bytes.decode("utf-16")
 
-    # Patrones flexibles para distintas versiones de exportación
-    pattern1 = r'(\d{1,2}/\d{1,2}/\d{4}), (\d{2}:\d{2}) - ([^:]+): (.+)'
-    pattern2 = r'\[(\d{1,2}/\d{1,2}/\d{4}) (\d{2}:\d{2})\] ([^:]+): (.+)'
-
-    matches1 = re.findall(pattern1, text)
-    matches2 = re.findall(pattern2, text)
-    matches = matches1 + matches2
+    lines = merge_multiline_whatsapp_messages(text)
+    pattern = re.compile(r'(\d{1,2}/\d{1,2}/\d{4}), (\d{2}:\d{2}) - ([^:]+): (.+)')
+    matches = [pattern.match(line) for line in lines if pattern.match(line)]
 
     st.write(f"📌 Mensajes detectados: {len(matches)}")
 
     records = []
-    for fecha, hora, usuario, mensaje in matches:
+    for match in matches:
+        fecha, hora, usuario, mensaje = match.groups()
         categoria = categorizar_dinamico(mensaje)
         records.append({
             'Fecha': fecha,
@@ -107,31 +122,23 @@ if uploaded_file:
     if fecha_especifica:
         df = df[df['Fecha'].dt.date == fecha_especifica]
 
-    # Filtros básicos
     usuario = st.selectbox("Filtrar por usuario", ["Todos"] + df['Usuario'].unique().tolist())
     palabra = st.text_input("Buscar palabra clave")
 
-    # Crear DataFrame filtrado (antes de usarlo)
     filtrado = df.copy()
     if usuario != "Todos":
         filtrado = filtrado[filtrado['Usuario'] == usuario]
     if palabra:
         filtrado = filtrado[filtrado['Mensaje'].str.contains(palabra, case=False)]
 
-    # AHORA SÍ: obtener categorías desde el DataFrame ya filtrado
     categorias_disponibles = sorted(filtrado['Categoría'].unique().tolist())
     if not categorias_disponibles:
         st.warning("⚠️ No hay categorías disponibles en los mensajes filtrados.")
 
     categoria = st.selectbox("Filtrar por categoría", ["Todos"] + categorias_disponibles)
 
-    filtrado = df.copy()
-    if usuario != "Todos":
-        filtrado = filtrado[filtrado['Usuario'] == usuario]
     if categoria != "Todos":
         filtrado = filtrado[filtrado['Categoría'] == categoria]
-    if palabra:
-        filtrado = filtrado[filtrado['Mensaje'].str.contains(palabra, case=False)]
 
     st.markdown(f"### ✉️ Mensajes filtrados: {len(filtrado)}")
     st.dataframe(filtrado)
